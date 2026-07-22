@@ -48,7 +48,7 @@
       <p class="subtitle" id="subtitle"></p>
     </header>
 
-    <div class="stats">
+    <div class="stats" id="stats" style="display:none;">
       <div class="stat-card">
         <div class="stat-label" style="color:#b91c1c;">Needs attention</div>
         <div class="stat-value" id="urgentCount"></div>
@@ -59,7 +59,11 @@
       </div>
     </div>
 
-    <div class="columns">
+    <button id="checkBtn" onclick="runCheck()">Check Urgency</button>
+
+    <div class="card-list" id="allList" style="margin-top:20px;"></div>
+
+    <div class="columns" id="columns" style="display:none;">
       <section>
         <div class="col-header">
           <span class="dot" style="background:#dc2626;"></span>
@@ -100,54 +104,73 @@
   const fmt = (d) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
-  const urgent = [], fine = [];
+  document.getElementById('subtitle').textContent = `Dairy stock — ${fmt(TODAY)}.`;
 
-  products.forEach((p) => {
-    const expDate = new Date(p.exp + 'T00:00:00');
-    const daysToExp = Math.round((expDate - TODAY) / DAY);
-    const lowStock = p.qty <= p.threshold;
-    const expiringSoon = daysToExp <= 14;
-    const flags = [];
-    if (lowStock) flags.push('Low stock');
-    if (expiringSoon) flags.push(daysToExp <= 0 ? 'Expired' : `Expires in ${daysToExp}d`);
-
-    const row = {
-      name: p.name,
-      threshold: p.threshold,
-      qtyLabel: `${p.qty} on hand`,
-      expLabel: fmt(expDate),
-      flags,
-    };
-    (lowStock || expiringSoon ? urgent : fine).push(row);
-  });
-
-  document.getElementById('subtitle').textContent =
-    `Dairy stock — ${fmt(TODAY)}. Flagged if at/below reorder point or expiring within 14 days.`;
-  document.getElementById('urgentCount').textContent = urgent.length;
-  document.getElementById('fineCount').textContent = fine.length;
-
-  document.getElementById('urgentList').innerHTML = urgent.map((p) => `
-    <div class="card urgent-card">
-      <div class="card-row">
-        <span class="card-name">${esc(p.name)}</span>
-        <span class="card-qty">${esc(p.qtyLabel)}</span>
-      </div>
-      <div class="chips">
-        ${p.flags.map((f) => `<span class="chip">${esc(f)}</span>`).join('')}
-      </div>
-      <div class="card-meta">Expires ${esc(p.expLabel)} · reorder at ${esc(p.threshold)}</div>
-    </div>
-  `).join('');
-
-  document.getElementById('fineList').innerHTML = fine.map((p) => `
+  document.getElementById('allList').innerHTML = products.map((p) => `
     <div class="card fine-card">
       <div class="card-row">
         <span class="card-name">${esc(p.name)}</span>
-        <span class="card-qty">${esc(p.qtyLabel)}</span>
+        <span class="card-qty">${p.qty} on hand</span>
       </div>
-      <div class="card-meta">Expires ${esc(p.expLabel)} · reorder at ${esc(p.threshold)}</div>
+      <div class="card-meta">Expires ${esc(fmt(new Date(p.exp + 'T00:00:00')))} · reorder at ${esc(p.threshold)}</div>
     </div>
   `).join('');
+
+  function runCheck() {
+    const urgent = [], fine = [];
+
+    products.forEach((p) => {
+      const expDate = new Date(p.exp + 'T00:00:00');
+      const daysToExp = Math.round((expDate - TODAY) / DAY);
+      const lowStock = p.qty <= p.threshold;
+      const expiringSoon = daysToExp <= 14;
+      const flags = [];
+      if (lowStock) flags.push('Low stock');
+      if (expiringSoon) flags.push(daysToExp <= 0 ? 'Expired' : `Expires in ${daysToExp}d`);
+
+      const row = {
+        name: p.name,
+        threshold: p.threshold,
+        qtyLabel: `${p.qty} on hand`,
+        expLabel: fmt(expDate),
+        flags,
+      };
+      (lowStock || expiringSoon ? urgent : fine).push(row);
+    });
+
+    document.getElementById('subtitle').textContent =
+      `Dairy stock — ${fmt(TODAY)}. Flagged if at/below reorder point or expiring within 14 days.`;
+    document.getElementById('urgentCount').textContent = urgent.length;
+    document.getElementById('fineCount').textContent = fine.length;
+
+    document.getElementById('urgentList').innerHTML = urgent.map((p) => `
+      <div class="card urgent-card">
+        <div class="card-row">
+          <span class="card-name">${esc(p.name)}</span>
+          <span class="card-qty">${esc(p.qtyLabel)}</span>
+        </div>
+        <div class="chips">
+          ${p.flags.map((f) => `<span class="chip">${esc(f)}</span>`).join('')}
+        </div>
+        <div class="card-meta">Expires ${esc(p.expLabel)} · reorder at ${esc(p.threshold)}</div>
+      </div>
+    `).join('');
+
+    document.getElementById('fineList').innerHTML = fine.map((p) => `
+      <div class="card fine-card">
+        <div class="card-row">
+          <span class="card-name">${esc(p.name)}</span>
+          <span class="card-qty">${esc(p.qtyLabel)}</span>
+        </div>
+        <div class="card-meta">Expires ${esc(p.expLabel)} · reorder at ${esc(p.threshold)}</div>
+      </div>
+    `).join('');
+
+    document.getElementById('stats').style.display = '';
+    document.getElementById('columns').style.display = '';
+    document.getElementById('checkBtn').style.display = 'none';
+    document.getElementById('allList').style.display = 'none';
+  }
 </script>
 </body>
 </html>
