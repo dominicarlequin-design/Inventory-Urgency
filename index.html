@@ -25,7 +25,8 @@
   .dot { width: 10px; height: 10px; border-radius: 50%; }
   .col-title { font-family: 'Inter Tight', sans-serif; font-size: 18px; font-weight: 600; margin: 0; }
   .card-list { display: flex; flex-direction: column; gap: 12px; }
-  .card { background: #fff; border-radius: 10px; padding: 16px 18px; }
+  .card { background: #fff; border-radius: 10px; padding: 16px 18px; transition: box-shadow 0.15s ease, transform 0.15s ease; }
+  .card:hover { box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08); transform: translateY(-1px); }
   .card-row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
   .card-name { font-weight: 600; font-size: 16px; }
   .card-qty { font-size: 13px; color: #64748b; }
