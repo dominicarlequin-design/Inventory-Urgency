@@ -115,7 +115,7 @@
   document.getElementById('subtitle').textContent = `Dairy stock — ${fmt(TODAY)}.`;
 
   document.getElementById('allList').innerHTML = products.map((p) => `
-    <div class="card fine-card">
+    <div class="card pending-card">
       <div class="card-row">
         <span class="card-name">${esc(p.name)}</span>
         <span class="card-qty">${p.qty} on hand</span>
