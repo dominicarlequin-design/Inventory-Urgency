@@ -240,7 +240,8 @@
 
   function getStatus(p) {
     const expirationDate = p.expirationDate instanceof Date && !Number.isNaN(p.expirationDate.getTime()) ? p.expirationDate : null;
-    const daysToExp = expirationDate && TODAY ? Math.round((expirationDate - TODAY) / DAY) : null;
+    const recordDate = p.recordDate instanceof Date && !Number.isNaN(p.recordDate.getTime()) ? p.recordDate : null;
+    const daysToExp = expirationDate && recordDate ? Math.round((expirationDate - recordDate) / DAY) : null;
     const lowStock = Number.isFinite(p.quantity) && Number.isFinite(p.threshold) && p.quantity <= p.threshold;
     const isExpired = daysToExp !== null ? daysToExp < 0 : false;
     const needsAttention = daysToExp !== null ? daysToExp <= 14 : false;
@@ -273,6 +274,7 @@
           quantity: toNumber(row['Quantity in Stock (liters/kg)']),
           threshold: toNumber(row['Minimum Stock Threshold (liters/kg)']),
           expirationDate: toDate(row['Expiration Date']),
+          recordDate: toDate(row['Date']),
         }));
 
         console.log('Reference date:', TODAY ? fmt(TODAY) : 'Unknown');
@@ -381,7 +383,7 @@
     console.log('Sample urgency rows:', sampleRows);
 
     document.getElementById('subtitle').textContent =
-      `Dairy stock — ${TODAY ? fmt(TODAY) : 'Unknown'}. Flagged if at/below reorder point or expiring within 14 days.`;
+      `Dairy stock — records through ${TODAY ? fmt(TODAY) : 'Unknown'}. Flagged if at/below reorder point, or expiring within 14 days of its own record date.`;
     document.getElementById('urgentCount').textContent = urgentCount;
     document.getElementById('fineCount').textContent = fineCount;
     document.getElementById('navUrgentCount').textContent = `(${urgentCount})`;
