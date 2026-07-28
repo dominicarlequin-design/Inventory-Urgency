@@ -20,10 +20,23 @@
   .stat-card { flex: 1; min-width: 180px; background: #fff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 18px 20px; }
   .stat-label { font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
   .stat-value { font-family: 'Inter Tight', sans-serif; font-size: 34px; font-weight: 700; margin-top: 4px; }
+  .toolbar { display: flex; gap: 12px; flex-wrap: wrap; margin: 0 0 12px; }
+  .search-input { flex: 1; min-width: 200px; font-family: inherit; font-size: 14px; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; background: #fff; color: #0f172a; }
+  .search-input:focus { outline: 2px solid #0f766e; outline-offset: -1px; }
+  .sort-select { font-family: inherit; font-size: 14px; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; background: #fff; color: #0f172a; cursor: pointer; }
+  .filter-chips { display: none; gap: 8px; flex-wrap: wrap; margin: 0 0 20px; }
+  .filter-chip { font-family: inherit; font-size: 13px; font-weight: 600; padding: 6px 14px; border-radius: 999px; border: 1px solid #e2e8f0; background: #fff; color: #64748b; cursor: pointer; transition: all 0.15s ease; }
+  .filter-chip:hover { border-color: #cbd5e1; }
+  .filter-chip.active { background: #0f172a; color: #fff; border-color: #0f172a; }
+  .sticky-nav { display: none; position: sticky; top: 0; z-index: 10; gap: 20px; background: rgba(248, 250, 252, 0.92); backdrop-filter: blur(6px); border-bottom: 1px solid #e2e8f0; padding: 12px 0; margin: 0 0 16px; }
+  .nav-link { font-size: 14px; font-weight: 600; text-decoration: none; color: #64748b; display: flex; align-items: center; gap: 6px; }
+  .nav-link:hover { color: #0f172a; }
   .columns { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
   .col-header { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
   .dot { width: 10px; height: 10px; border-radius: 50%; }
   .col-title { font-family: 'Inter Tight', sans-serif; font-size: 18px; font-weight: 600; margin: 0; }
+  .col-toggle { font-family: inherit; font-size: 13px; font-weight: 600; color: #0f766e; background: none; border: none; cursor: pointer; margin-left: auto; padding: 4px 8px; }
+  .col-toggle:hover { text-decoration: underline; }
   .card-list { display: flex; flex-direction: column; gap: 12px; }
   .card { background: #fff; border-radius: 10px; padding: 16px 18px; transition: box-shadow 0.15s ease, transform 0.15s ease; }
   .card:hover { box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08); transform: translateY(-1px); }
@@ -36,6 +49,14 @@
   .chip-ok { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
   .urgent-card { border: 1px solid #fecaca; border-left: 4px solid #dc2626; }
   .fine-card { border: 1px solid #bbf7d0; border-left: 4px solid #16a34a; }
+  .list-footer { display: flex; flex-direction: column; align-items: center; gap: 10px; margin-top: 14px; }
+  .list-count { font-size: 13px; color: #94a3b8; margin: 0; }
+  .show-more-btn { font-family: inherit; font-size: 14px; font-weight: 600; color: #0f766e; background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 20px; cursor: pointer; transition: all 0.15s ease; }
+  .show-more-btn:hover { background: #f0fdfa; border-color: #99f6e4; }
+  .empty-state { font-size: 14px; color: #94a3b8; text-align: center; padding: 24px 0; margin: 0; }
+  .back-to-top { display: none; position: fixed; bottom: 24px; right: 24px; font-family: inherit; font-size: 13px; font-weight: 600; color: #fff; background: #0f766e; border: none; border-radius: 999px; padding: 10px 16px; cursor: pointer; box-shadow: 0 4px 12px rgba(15, 23, 42, 0.15); transition: background 0.15s ease; z-index: 20; }
+  .back-to-top:hover { background: #115e59; }
+  #urgentSection, #fineSection { scroll-margin-top: 70px; }
   #checkBtn { font-family: 'Inter Tight', sans-serif; font-size: 15px; font-weight: 600; color: #fff; background: #0f766e; border: none; border-radius: 8px; padding: 12px 22px; cursor: pointer; transition: background 0.15s ease; }
   #checkBtn:hover { background: #115e59; }
   #checkBtn:active { background: #0d5c54; }
@@ -64,41 +85,82 @@
       </div>
     </div>
 
+    <div class="toolbar">
+      <input type="text" id="searchInput" class="search-input" placeholder="Search products…">
+      <select id="sortSelect" class="sort-select">
+        <option value="default">Sort: Default</option>
+        <option value="name">Sort: Name (A–Z)</option>
+        <option value="expiry">Sort: Expiration date</option>
+      </select>
+    </div>
+
+    <div class="filter-chips" id="filterChips">
+      <button class="filter-chip active" data-reason="all" type="button">All</button>
+      <button class="filter-chip" data-reason="low-stock" type="button">Low stock</button>
+      <button class="filter-chip" data-reason="expiring" type="button">Expiring soon</button>
+      <button class="filter-chip" data-reason="expired" type="button">Expired</button>
+    </div>
+
     <button id="checkBtn" onclick="runCheck()">Check Urgency</button>
 
     <div class="card-list" id="allList" style="margin-top:20px;"></div>
+    <div class="list-footer" id="allListFooter"></div>
 
     <div id="summary-line" style="display:none; margin-bottom:12px; font-size:0.95rem; color:#64748b;">
       Checked <span id="product-count"></span> products · <span id="check-date"></span>
     </div>
 
+    <div class="sticky-nav" id="stickyNav">
+      <a href="#urgentSection" class="nav-link"><span class="dot" style="background:#dc2626;"></span>Needs Attention <span id="navUrgentCount"></span></a>
+      <a href="#fineSection" class="nav-link"><span class="dot" style="background:#16a34a;"></span>Fine For Now <span id="navFineCount"></span></a>
+    </div>
+
     <div class="columns" id="columns" style="display:none;">
-      <section>
+      <section id="urgentSection">
         <div class="col-header">
           <span class="dot" style="background:#dc2626;"></span>
           <h2 class="col-title">Needs Attention Today</h2>
         </div>
         <div class="card-list" id="urgentList"></div>
+        <div class="list-footer" id="urgentListFooter"></div>
       </section>
 
-      <section>
+      <section id="fineSection">
         <div class="col-header">
           <span class="dot" style="background:#16a34a;"></span>
           <h2 class="col-title">Fine For Now</h2>
+          <button class="col-toggle" id="fineToggle" type="button"></button>
         </div>
-        <div class="card-list" id="fineList"></div>
+        <div class="card-list" id="fineList" style="display:none;"></div>
+        <div class="list-footer" id="fineListFooter" style="display:none;"></div>
       </section>
     </div>
   </div>
 </div>
 
+<button class="back-to-top" id="backToTop" type="button">↑ Top</button>
+
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 <script>
   const DAY = 86400000;
+  const PAGE_SIZE = 50;
 
   let products = [];
+  let urgentRows = [];
+  let fineRows = [];
   let referenceDate = null;
   let TODAY = null;
+  let checked = false;
+
+  const state = {
+    search: '',
+    sort: 'default',
+    reason: 'all',
+    allPage: 1,
+    urgentPage: 1,
+    finePage: 1,
+    fineCollapsed: true,
+  };
 
   const fmt = (d) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -118,8 +180,53 @@
     return Number.isNaN(date.getTime()) ? new Date(NaN) : date;
   }
 
+  function matchesSearch(row) {
+    if (!state.search) return true;
+    return String(row.name).toLowerCase().includes(state.search);
+  }
+
+  function matchesReason(row) {
+    if (state.reason === 'all') return true;
+    if (!row.flags) return false;
+    if (state.reason === 'low-stock') return row.flags.includes('Low stock');
+    if (state.reason === 'expired') return row.flags.includes('Expired');
+    if (state.reason === 'expiring') return row.flags.some((f) => f.startsWith('Expires in'));
+    return true;
+  }
+
+  function expiryTime(row) {
+    return row.expirationDate instanceof Date && !Number.isNaN(row.expirationDate.getTime())
+      ? row.expirationDate.getTime()
+      : Infinity;
+  }
+
+  function sortRows(rows) {
+    const sorted = rows.slice();
+    if (state.sort === 'name') sorted.sort((a, b) => String(a.name).localeCompare(String(b.name)));
+    else if (state.sort === 'expiry') sorted.sort((a, b) => expiryTime(a) - expiryTime(b));
+    return sorted;
+  }
+
+  function renderListFooter(id, shownCount, totalCount, onMore) {
+    const el = document.getElementById(id);
+    if (totalCount === 0) {
+      el.innerHTML = `<p class="empty-state">No products match.</p>`;
+      return;
+    }
+    const remaining = totalCount - shownCount;
+    el.innerHTML = `
+      <p class="list-count">Showing ${shownCount} of ${totalCount}</p>
+      ${remaining > 0 ? `<button class="show-more-btn" type="button">Show ${Math.min(remaining, PAGE_SIZE)} more</button>` : ''}
+    `;
+    const btn = el.querySelector('.show-more-btn');
+    if (btn) btn.addEventListener('click', onMore);
+  }
+
   function renderAllList() {
-    document.getElementById('allList').innerHTML = products.map((p) => `
+    const filtered = products.filter(matchesSearch);
+    const sorted = sortRows(filtered);
+    const shown = sorted.slice(0, state.allPage * PAGE_SIZE);
+    document.getElementById('allList').innerHTML = shown.map((p) => `
       <div class="card pending-card">
         <div class="card-row">
           <span class="card-name">${esc(p.name)}</span>
@@ -128,14 +235,15 @@
         <div class="card-meta">Expires ${esc(fmt(p.expirationDate))} · reorder at ${esc(p.threshold)}</div>
       </div>
     `).join('');
+    renderListFooter('allListFooter', shown.length, sorted.length, () => { state.allPage++; renderAllList(); });
   }
 
   function getStatus(p) {
     const expirationDate = p.expirationDate instanceof Date && !Number.isNaN(p.expirationDate.getTime()) ? p.expirationDate : null;
     const daysToExp = expirationDate && TODAY ? Math.round((expirationDate - TODAY) / DAY) : null;
     const lowStock = Number.isFinite(p.quantity) && Number.isFinite(p.threshold) && p.quantity <= p.threshold;
-    const isExpired = expirationDate ? daysToExp < 0 : false;
-    const needsAttention = expirationDate ? daysToExp <= 14 : false;
+    const isExpired = daysToExp !== null ? daysToExp < 0 : false;
+    const needsAttention = daysToExp !== null ? daysToExp <= 14 : false;
 
     if (lowStock || needsAttention) return { status: 'urgent', flags: [
       ...(lowStock ? ['Low stock'] : []),
@@ -186,8 +294,60 @@
     });
   }
 
+  function renderUrgentList() {
+    const filtered = urgentRows.filter((r) => matchesSearch(r) && matchesReason(r));
+    const sorted = sortRows(filtered);
+    const shown = sorted.slice(0, state.urgentPage * PAGE_SIZE);
+    document.getElementById('urgentList').innerHTML = shown.map((p) => `
+      <div class="card urgent-card">
+        <div class="card-row">
+          <span class="card-name">${esc(p.name)}</span>
+          <span class="card-qty">${esc(p.qtyLabel)}</span>
+        </div>
+        <div class="chips">
+          ${p.flags.map((f) => `<span class="chip">${esc(f)}</span>`).join('')}
+        </div>
+        <div class="card-meta">Expires ${esc(p.expLabel)} · reorder at ${esc(p.threshold)}</div>
+      </div>
+    `).join('');
+    renderListFooter('urgentListFooter', shown.length, sorted.length, () => { state.urgentPage++; renderUrgentList(); });
+  }
+
+  function renderFineList() {
+    const filtered = fineRows.filter(matchesSearch);
+    const sorted = sortRows(filtered);
+    const shown = sorted.slice(0, state.finePage * PAGE_SIZE);
+    document.getElementById('fineList').innerHTML = shown.map((p) => `
+      <div class="card fine-card">
+        <div class="card-row">
+          <span class="card-name">${esc(p.name)}</span>
+          <span class="card-qty">${esc(p.qtyLabel)}</span>
+        </div>
+        <div class="chips">
+          <span class="chip chip-ok">All good</span>
+        </div>
+        <div class="card-meta">Expires ${esc(p.expLabel)} · reorder at ${esc(p.threshold)}</div>
+      </div>
+    `).join('');
+    renderListFooter('fineListFooter', shown.length, sorted.length, () => { state.finePage++; renderFineList(); });
+  }
+
+  function updateFineToggle() {
+    const btn = document.getElementById('fineToggle');
+    btn.textContent = state.fineCollapsed ? `Show (${fineRows.length})` : 'Hide';
+    document.getElementById('fineList').style.display = state.fineCollapsed ? 'none' : '';
+    document.getElementById('fineListFooter').style.display = state.fineCollapsed ? 'none' : '';
+  }
+
+  function renderCurrentView() {
+    if (!checked) renderAllList();
+    else { renderUrgentList(); renderFineList(); }
+  }
+
   function checkUrgency() {
-    const urgent = [], fine = [];
+    urgentRows = [];
+    fineRows = [];
+    checked = true;
 
     products.forEach((p) => {
       const statusInfo = getStatus(p);
@@ -196,20 +356,21 @@
         threshold: p.threshold,
         qtyLabel: `${p.quantity} on hand`,
         expLabel: p.expirationDate instanceof Date && !Number.isNaN(p.expirationDate.getTime()) ? fmt(p.expirationDate) : 'Unknown',
+        expirationDate: p.expirationDate,
         flags: statusInfo.flags,
         status: statusInfo.status,
       };
 
-      if (statusInfo.status === 'urgent') urgent.push(row);
-      else fine.push(row);
+      if (statusInfo.status === 'urgent') urgentRows.push(row);
+      else fineRows.push(row);
     });
 
-    const urgentCount = urgent.length;
-    const fineCount = fine.length;
+    const urgentCount = urgentRows.length;
+    const fineCount = fineRows.length;
     const totalRows = products.length;
     console.log('Reference-based counts:', { referenceDate: TODAY ? fmt(TODAY) : 'Unknown', totalRows, urgentCount, fineCount });
 
-    const sampleRows = [...urgent.slice(0, 2), ...fine.slice(0, 1)].map((item) => ({
+    const sampleRows = [...urgentRows.slice(0, 2), ...fineRows.slice(0, 1)].map((item) => ({
       name: item.name,
       quantity: item.qtyLabel,
       threshold: item.threshold,
@@ -223,32 +384,14 @@
       `Dairy stock — ${TODAY ? fmt(TODAY) : 'Unknown'}. Flagged if at/below reorder point or expiring within 14 days.`;
     document.getElementById('urgentCount').textContent = urgentCount;
     document.getElementById('fineCount').textContent = fineCount;
+    document.getElementById('navUrgentCount').textContent = `(${urgentCount})`;
+    document.getElementById('navFineCount').textContent = `(${fineCount})`;
 
-    document.getElementById('urgentList').innerHTML = urgent.map((p) => `
-      <div class="card urgent-card">
-        <div class="card-row">
-          <span class="card-name">${esc(p.name)}</span>
-          <span class="card-qty">${esc(p.qtyLabel)}</span>
-        </div>
-        <div class="chips">
-          ${p.flags.map((f) => `<span class="chip">${esc(f)}</span>`).join('')}
-        </div>
-        <div class="card-meta">Expires ${esc(p.expLabel)} · reorder at ${esc(p.threshold)}</div>
-      </div>
-    `).join('');
-
-    document.getElementById('fineList').innerHTML = fine.map((p) => `
-      <div class="card fine-card">
-        <div class="card-row">
-          <span class="card-name">${esc(p.name)}</span>
-          <span class="card-qty">${esc(p.qtyLabel)}</span>
-        </div>
-        <div class="chips">
-          <span class="chip chip-ok">All good</span>
-        </div>
-        <div class="card-meta">Expires ${esc(p.expLabel)} · reorder at ${esc(p.threshold)}</div>
-      </div>
-    `).join('');
+    state.urgentPage = 1;
+    state.finePage = 1;
+    renderUrgentList();
+    renderFineList();
+    updateFineToggle();
 
     document.getElementById('product-count').textContent = products.length;
     document.getElementById('check-date').textContent = new Date().toLocaleDateString('en-US', {month:'short', day:'numeric', year:'numeric'});
@@ -258,11 +401,52 @@
     document.getElementById('columns').style.display = '';
     document.getElementById('checkBtn').style.display = 'none';
     document.getElementById('allList').style.display = 'none';
+    document.getElementById('allListFooter').style.display = 'none';
+    document.getElementById('filterChips').style.display = 'flex';
+    document.getElementById('stickyNav').style.display = 'flex';
   }
 
   function runCheck() {
     checkUrgency();
   }
+
+  document.getElementById('searchInput').addEventListener('input', (e) => {
+    state.search = e.target.value.trim().toLowerCase();
+    state.allPage = 1;
+    state.urgentPage = 1;
+    state.finePage = 1;
+    renderCurrentView();
+  });
+
+  document.getElementById('sortSelect').addEventListener('change', (e) => {
+    state.sort = e.target.value;
+    state.allPage = 1;
+    state.urgentPage = 1;
+    state.finePage = 1;
+    renderCurrentView();
+  });
+
+  document.querySelectorAll('.filter-chip').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      state.reason = btn.dataset.reason;
+      state.urgentPage = 1;
+      document.querySelectorAll('.filter-chip').forEach((b) => b.classList.toggle('active', b === btn));
+      renderUrgentList();
+    });
+  });
+
+  document.getElementById('fineToggle').addEventListener('click', () => {
+    state.fineCollapsed = !state.fineCollapsed;
+    updateFineToggle();
+  });
+
+  const backToTop = document.getElementById('backToTop');
+  window.addEventListener('scroll', () => {
+    backToTop.style.display = window.scrollY > 400 ? 'block' : 'none';
+  });
+  backToTop.addEventListener('click', () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
 
   loadProducts();
 </script>
