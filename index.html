@@ -309,7 +309,7 @@
         <div class="chips">
           ${p.flags.map((f) => `<span class="chip">${esc(f)}</span>`).join('')}
         </div>
-        <div class="card-meta">Expires ${esc(p.expLabel)} · reorder at ${esc(p.threshold)}</div>
+        <div class="card-meta">Expires ${esc(p.expLabel)} · recorded ${esc(p.recordLabel)} · reorder at ${esc(p.threshold)}</div>
       </div>
     `).join('');
     renderListFooter('urgentListFooter', shown.length, sorted.length, () => { state.urgentPage++; renderUrgentList(); });
@@ -328,7 +328,7 @@
         <div class="chips">
           <span class="chip chip-ok">All good</span>
         </div>
-        <div class="card-meta">Expires ${esc(p.expLabel)} · reorder at ${esc(p.threshold)}</div>
+        <div class="card-meta">Expires ${esc(p.expLabel)} · recorded ${esc(p.recordLabel)} · reorder at ${esc(p.threshold)}</div>
       </div>
     `).join('');
     renderListFooter('fineListFooter', shown.length, sorted.length, () => { state.finePage++; renderFineList(); });
@@ -358,6 +358,7 @@
         threshold: p.threshold,
         qtyLabel: `${p.quantity} on hand`,
         expLabel: p.expirationDate instanceof Date && !Number.isNaN(p.expirationDate.getTime()) ? fmt(p.expirationDate) : 'Unknown',
+        recordLabel: p.recordDate instanceof Date && !Number.isNaN(p.recordDate.getTime()) ? fmt(p.recordDate) : 'Unknown',
         expirationDate: p.expirationDate,
         flags: statusInfo.flags,
         status: statusInfo.status,
