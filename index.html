@@ -34,8 +34,10 @@
   .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
   .chip { font-size: 12px; font-weight: 600; background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; border-radius: 999px; padding: 4px 10px; }
   .chip-ok { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
+  .chip-expired { background: #fff7ed; color: #c2410c; border: 1px solid #fdba74; }
   .urgent-card { border: 1px solid #fecaca; border-left: 4px solid #dc2626; }
   .fine-card { border: 1px solid #bbf7d0; border-left: 4px solid #16a34a; }
+  .expired-card { border: 1px solid #fdba74; border-left: 4px solid #c2410c; }
   #checkBtn { font-family: 'Inter Tight', sans-serif; font-size: 15px; font-weight: 600; color: #fff; background: #0f766e; border: none; border-radius: 8px; padding: 12px 22px; cursor: pointer; transition: background 0.15s ease; }
   #checkBtn:hover { background: #115e59; }
   #checkBtn:active { background: #0d5c54; }
@@ -94,14 +96,29 @@
 
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 <script>
-  const TODAY = new Date();
-  TODAY.setHours(0, 0, 0, 0);
   const DAY = 86400000;
 
   let products = [];
+  let referenceDate = null;
+  let TODAY = null;
 
   const fmt = (d) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+  function toNumber(value) {
+    const num = Number(value);
+    return Number.isFinite(num) ? num : 0;
+  }
+
+  function toDate(value) {
+    if (typeof value !== 'string') return new Date(NaN);
+
+    const [year, month, day] = value.split('-').map(Number);
+    if (!year || !month || !day) return new Date(NaN);
+
+    const date = new Date(year, month - 1, day);
+    return Number.isNaN(date.getTime()) ? new Date(NaN) : date;
+  }
 
   function renderAllList() {
     document.getElementById('allList').innerHTML = products.map((p) => `
@@ -115,21 +132,51 @@
     `).join('');
   }
 
+  function getStatus(p) {
+    const expirationDate = p.expirationDate instanceof Date && !Number.isNaN(p.expirationDate.getTime()) ? p.expirationDate : null;
+    const daysToExp = expirationDate && TODAY ? Math.round((expirationDate - TODAY) / DAY) : null;
+    const lowStock = Number.isFinite(p.quantity) && Number.isFinite(p.threshold) && p.quantity <= p.threshold;
+    const isExpired = expirationDate ? daysToExp < 0 : false;
+    const expiringSoon = expirationDate ? daysToExp >= 0 && daysToExp <= 14 : false;
+
+    if (isExpired) return { status: 'expired', flags: ['Expired'] };
+    if (lowStock || expiringSoon) return { status: 'urgent', flags: [
+      ...(lowStock ? ['Low stock'] : []),
+      ...(expiringSoon ? [daysToExp === 0 ? 'Expired' : `Expires in ${daysToExp}d`] : []),
+    ] };
+    return { status: 'fine', flags: [] };
+  }
+
   function loadProducts() {
     Papa.parse('./data/dairy-data.csv', {
       download: true,
       header: true,
       dynamicTyping: true,
       complete: (results) => {
-        products = results.data
-          .filter((row) => row && row['Product Name'])
-          .map((row) => ({
-            name: row['Product Name'],
-            quantity: Number(row['Quantity in Stock (liters/kg)']),
-            threshold: Number(row['Minimum Stock Threshold (liters/kg)']),
-            expirationDate: new Date(row['Expiration Date']),
-          }));
+        const rows = results.data.filter((row) => row && row['Product Name']);
 
+        referenceDate = rows.reduce((latest, row) => {
+          const value = row['Date'];
+          const parsed = toDate(value);
+          if (Number.isNaN(parsed.getTime())) return latest;
+          return latest && latest > parsed ? latest : parsed;
+        }, null);
+        TODAY = referenceDate;
+
+        products = rows.map((row) => ({
+          name: row['Product Name'],
+          quantity: toNumber(row['Quantity in Stock (liters/kg)']),
+          threshold: toNumber(row['Minimum Stock Threshold (liters/kg)']),
+          expirationDate: toDate(row['Expiration Date']),
+        }));
+
+        console.log('Reference date:', TODAY ? fmt(TODAY) : 'Unknown');
+        console.log('First 5 mapped products:', products.slice(0, 5));
+        console.log('Sample dates:', products.slice(0, 5).map((p) => ({
+          name: p.name,
+          csvDate: p.expirationDate.toISOString().slice(0, 10),
+          displayDate: fmt(p.expirationDate),
+        })));
         renderAllList();
         checkUrgency();
       },
@@ -143,30 +190,44 @@
   }
 
   function checkUrgency() {
-    const urgent = [], fine = [];
+    const urgent = [], expired = [], fine = [];
 
     products.forEach((p) => {
-      const daysToExp = Math.round((p.expirationDate - TODAY) / DAY);
-      const lowStock = p.quantity <= p.threshold;
-      const expiringSoon = daysToExp <= 14;
-      const flags = [];
-      if (lowStock) flags.push('Low stock');
-      if (expiringSoon) flags.push(daysToExp <= 0 ? 'Expired' : `Expires in ${daysToExp}d`);
-
+      const statusInfo = getStatus(p);
       const row = {
         name: p.name,
         threshold: p.threshold,
         qtyLabel: `${p.quantity} on hand`,
-        expLabel: fmt(p.expirationDate),
-        flags,
+        expLabel: p.expirationDate instanceof Date && !Number.isNaN(p.expirationDate.getTime()) ? fmt(p.expirationDate) : 'Unknown',
+        flags: statusInfo.flags,
+        status: statusInfo.status,
       };
-      (lowStock || expiringSoon ? urgent : fine).push(row);
+
+      if (statusInfo.status === 'urgent') urgent.push(row);
+      else if (statusInfo.status === 'expired') expired.push(row);
+      else fine.push(row);
     });
 
+    const urgentCount = urgent.length;
+    const expiredCount = expired.length;
+    const fineCount = fine.length;
+    const totalRows = products.length;
+    console.log('Reference-based counts:', { referenceDate: TODAY ? fmt(TODAY) : 'Unknown', totalRows, urgentCount, expiredCount, fineCount });
+
+    const sampleRows = [...urgent.slice(0, 2), ...expired.slice(0, 2), ...fine.slice(0, 1)].map((item) => ({
+      name: item.name,
+      quantity: item.qtyLabel,
+      threshold: item.threshold,
+      expirationDate: item.expLabel,
+      status: item.status,
+      reason: item.flags.length > 0 ? item.flags.join(', ') : 'No issues',
+    }));
+    console.log('Sample urgency rows:', sampleRows);
+
     document.getElementById('subtitle').textContent =
-      `Dairy stock — ${fmt(TODAY)}. Flagged if at/below reorder point or expiring within 14 days.`;
-    document.getElementById('urgentCount').textContent = urgent.length;
-    document.getElementById('fineCount').textContent = fine.length;
+      `Dairy stock — ${TODAY ? fmt(TODAY) : 'Unknown'}. Flagged if at/below reorder point or expiring within 14 days.`;
+    document.getElementById('urgentCount').textContent = urgentCount;
+    document.getElementById('fineCount').textContent = fineCount;
 
     document.getElementById('urgentList').innerHTML = urgent.map((p) => `
       <div class="card urgent-card">
@@ -181,14 +242,14 @@
       </div>
     `).join('');
 
-    document.getElementById('fineList').innerHTML = fine.map((p) => `
-      <div class="card fine-card">
+    document.getElementById('fineList').innerHTML = [...expired, ...fine].map((p) => `
+      <div class="card ${p.status === 'expired' ? 'expired-card' : 'fine-card'}">
         <div class="card-row">
           <span class="card-name">${esc(p.name)}</span>
           <span class="card-qty">${esc(p.qtyLabel)}</span>
         </div>
         <div class="chips">
-          <span class="chip chip-ok">All good</span>
+          <span class="chip ${p.status === 'expired' ? 'chip-expired' : 'chip-ok'}">${p.status === 'expired' ? 'Expired' : 'All good'}</span>
         </div>
         <div class="card-meta">Expires ${esc(p.expLabel)} · reorder at ${esc(p.threshold)}</div>
       </div>
@@ -208,7 +269,6 @@
     checkUrgency();
   }
 
-  document.getElementById('subtitle').textContent = `Dairy stock — ${fmt(TODAY)}.`;
   loadProducts();
 </script>
 </body>
