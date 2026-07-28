@@ -92,46 +92,62 @@
   </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 <script>
   const TODAY = new Date();
   TODAY.setHours(0, 0, 0, 0);
   const DAY = 86400000;
 
-  const products = [
-    { name: 'Whole Milk (1 gal)', qty: 8,  threshold: 12, exp: '2026-07-28' },
-    { name: 'Greek Yogurt (32oz)', qty: 24, threshold: 10, exp: '2026-08-15' },
-    { name: 'Sharp Cheddar Block', qty: 15, threshold: 6,  exp: '2026-10-02' },
-    { name: 'Unsalted Butter', qty: 4,  threshold: 8,  exp: '2026-09-20' },
-    { name: 'Heavy Cream (pint)', qty: 9,  threshold: 5,  exp: '2026-07-25' },
-    { name: 'Cottage Cheese', qty: 18, threshold: 8,  exp: '2026-08-30' },
-    { name: 'Sour Cream (16oz)', qty: 6,  threshold: 6,  exp: '2026-08-05' },
-    { name: 'Mozzarella (fresh)', qty: 3,  threshold: 10, exp: '2026-07-24' },
-    { name: 'Half & Half (quart)', qty: 20, threshold: 12, exp: '2026-08-18' },
-    { name: 'String Cheese (12pk)', qty: 30, threshold: 15, exp: '2026-11-10' },
-  ];
+  let products = [];
 
   const fmt = (d) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
-  document.getElementById('subtitle').textContent = `Dairy stock — ${fmt(TODAY)}.`;
-
-  document.getElementById('allList').innerHTML = products.map((p) => `
-    <div class="card pending-card">
-      <div class="card-row">
-        <span class="card-name">${esc(p.name)}</span>
-        <span class="card-qty">${p.qty} on hand</span>
+  function renderAllList() {
+    document.getElementById('allList').innerHTML = products.map((p) => `
+      <div class="card pending-card">
+        <div class="card-row">
+          <span class="card-name">${esc(p.name)}</span>
+          <span class="card-qty">${p.quantity} on hand</span>
+        </div>
+        <div class="card-meta">Expires ${esc(fmt(p.expirationDate))} · reorder at ${esc(p.threshold)}</div>
       </div>
-      <div class="card-meta">Expires ${esc(fmt(new Date(p.exp + 'T00:00:00')))} · reorder at ${esc(p.threshold)}</div>
-    </div>
-  `).join('');
+    `).join('');
+  }
 
-  function runCheck() {
+  function loadProducts() {
+    Papa.parse('./data/dairy-data.csv', {
+      download: true,
+      header: true,
+      dynamicTyping: true,
+      complete: (results) => {
+        products = results.data
+          .filter((row) => row && row['Product Name'])
+          .map((row) => ({
+            name: row['Product Name'],
+            quantity: Number(row['Quantity in Stock (liters/kg)']),
+            threshold: Number(row['Minimum Stock Threshold (liters/kg)']),
+            expirationDate: new Date(row['Expiration Date']),
+          }));
+
+        renderAllList();
+        checkUrgency();
+      },
+      error: (error) => {
+        console.error('Failed to load dairy data', error);
+        products = [];
+        renderAllList();
+        checkUrgency();
+      },
+    });
+  }
+
+  function checkUrgency() {
     const urgent = [], fine = [];
 
     products.forEach((p) => {
-      const expDate = new Date(p.exp + 'T00:00:00');
-      const daysToExp = Math.round((expDate - TODAY) / DAY);
-      const lowStock = p.qty <= p.threshold;
+      const daysToExp = Math.round((p.expirationDate - TODAY) / DAY);
+      const lowStock = p.quantity <= p.threshold;
       const expiringSoon = daysToExp <= 14;
       const flags = [];
       if (lowStock) flags.push('Low stock');
@@ -140,8 +156,8 @@
       const row = {
         name: p.name,
         threshold: p.threshold,
-        qtyLabel: `${p.qty} on hand`,
-        expLabel: fmt(expDate),
+        qtyLabel: `${p.quantity} on hand`,
+        expLabel: fmt(p.expirationDate),
         flags,
       };
       (lowStock || expiringSoon ? urgent : fine).push(row);
@@ -187,6 +203,13 @@
     document.getElementById('checkBtn').style.display = 'none';
     document.getElementById('allList').style.display = 'none';
   }
+
+  function runCheck() {
+    checkUrgency();
+  }
+
+  document.getElementById('subtitle').textContent = `Dairy stock — ${fmt(TODAY)}.`;
+  loadProducts();
 </script>
 </body>
 </html>
