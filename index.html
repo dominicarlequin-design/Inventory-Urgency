@@ -229,7 +229,7 @@
     document.getElementById('allList').innerHTML = shown.map((p) => `
       <div class="card pending-card">
         <div class="card-row">
-          <span class="card-name">${esc(p.name)}</span>
+          <span class="card-name">${esc(p.name)} — ${esc(p.brand)}, ${esc(p.location)}</span>
           <span class="card-qty">${p.quantity} on hand</span>
         </div>
         <div class="card-meta">Expires ${esc(fmt(p.expirationDate))} · reorder at ${esc(p.threshold)}</div>
@@ -270,6 +270,8 @@
 
         products = rows.map((row) => ({
           name: row['Product Name'],
+          brand: row['Brand'],
+          location: row['Location'],
           quantity: toNumber(row['Quantity in Stock (liters/kg)']),
           threshold: toNumber(row['Minimum Stock Threshold (liters/kg)']),
           expirationDate: toDate(row['Expiration Date']),
@@ -302,7 +304,7 @@
     document.getElementById('urgentList').innerHTML = shown.map((p) => `
       <div class="card urgent-card">
         <div class="card-row">
-          <span class="card-name">${esc(p.name)}</span>
+          <span class="card-name">${esc(p.name)} — ${esc(p.brand)}, ${esc(p.location)}</span>
           <span class="card-qty">${esc(p.qtyLabel)}</span>
         </div>
         <div class="chips">
@@ -321,7 +323,7 @@
     document.getElementById('fineList').innerHTML = shown.map((p) => `
       <div class="card fine-card">
         <div class="card-row">
-          <span class="card-name">${esc(p.name)}</span>
+          <span class="card-name">${esc(p.name)} — ${esc(p.brand)}, ${esc(p.location)}</span>
           <span class="card-qty">${esc(p.qtyLabel)}</span>
         </div>
         <div class="chips">
@@ -354,6 +356,8 @@
       const statusInfo = getStatus(p);
       const row = {
         name: p.name,
+        brand: p.brand,
+        location: p.location,
         threshold: p.threshold,
         qtyLabel: `${p.quantity} on hand`,
         expLabel: p.expirationDate instanceof Date && !Number.isNaN(p.expirationDate.getTime()) ? fmt(p.expirationDate) : 'Unknown',
