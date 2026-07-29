@@ -240,7 +240,8 @@
 
   function getStatus(p) {
     const expirationDate = p.expirationDate instanceof Date && !Number.isNaN(p.expirationDate.getTime()) ? p.expirationDate : null;
-    const daysToExp = expirationDate && referenceDate ? Math.round((expirationDate - referenceDate) / DAY) : null;
+    const recordDate = p.recordDate instanceof Date && !Number.isNaN(p.recordDate.getTime()) ? p.recordDate : null;
+    const daysToExp = expirationDate && recordDate ? Math.round((expirationDate - recordDate) / DAY) : null;
     const lowStock = Number.isFinite(p.quantity) && Number.isFinite(p.threshold) && p.quantity <= p.threshold;
     const isExpired = daysToExp !== null ? daysToExp < 0 : false;
     const needsAttention = daysToExp !== null ? daysToExp <= 14 : false;
