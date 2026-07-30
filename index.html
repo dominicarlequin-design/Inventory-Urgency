@@ -122,7 +122,10 @@
       </select>
     </div>
 
-    <button id="checkBtn" onclick="runCheck()">Check Urgency</button>
+    <button id="checkBtn" onclick="runCheck()" style="display:none;">Check Urgency</button>
+
+    <p class="empty-state" id="loadingState">Loading inventory data…</p>
+    <p class="empty-state" id="errorState" style="display:none; color: var(--clay);"></p>
 
     <div class="card-list" id="allList" style="margin-top:20px;"></div>
     <div class="list-footer" id="allListFooter"></div>
@@ -232,7 +235,13 @@
     if (btn) btn.addEventListener('click', onMore);
   }
 
+  function renderNoDataState(listId, footerId) {
+    document.getElementById(listId).innerHTML = `<p class="empty-state">No inventory data yet.</p>`;
+    document.getElementById(footerId).innerHTML = '';
+  }
+
   function renderAllList() {
+    if (!products.length) return renderNoDataState('allList', 'allListFooter');
     const filtered = products.filter((r) => matchesSearch(r) && matchesLocation(r));
     const sorted = sortRows(filtered);
     const shown = sorted.slice(0, state.allPage * PAGE_SIZE);
@@ -264,11 +273,16 @@
   }
 
   function loadProducts() {
+    document.getElementById('loadingState').style.display = '';
+    document.getElementById('errorState').style.display = 'none';
+
     Papa.parse('./data/dairy-data.csv', {
       download: true,
       header: true,
       dynamicTyping: true,
       complete: (results) => {
+        document.getElementById('loadingState').style.display = 'none';
+
         const rows = results.data.filter((row) => row && row['Product Name']);
 
         referenceDate = rows.reduce((latest, row) => {
@@ -301,19 +315,22 @@
           csvDate: p.expirationDate.toISOString().slice(0, 10),
           displayDate: fmt(p.expirationDate),
         })));
+        document.getElementById('checkBtn').style.display = '';
         renderAllList();
         checkUrgency();
       },
       error: (error) => {
         console.error('Failed to load dairy data', error);
-        products = [];
-        renderAllList();
-        checkUrgency();
+        document.getElementById('loadingState').style.display = 'none';
+        const errorEl = document.getElementById('errorState');
+        errorEl.textContent = 'Couldn\'t load inventory data. Please try refreshing the page.';
+        errorEl.style.display = '';
       },
     });
   }
 
   function renderCheckedList() {
+    if (!products.length) return renderNoDataState('checkedList', 'checkedListFooter');
     const combined = [...urgentRows, ...fineRows];
     const filtered = combined.filter((r) => matchesSearch(r) && matchesReason(r) && matchesLocation(r));
     const sorted = sortRows(filtered);
