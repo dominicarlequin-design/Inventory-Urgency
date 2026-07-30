@@ -150,6 +150,7 @@
     sort: 'default',
     reason: 'all',
     location: 'all',
+    category: 'all',
     listPage: 1,
   };
 
@@ -178,6 +179,10 @@
 
   function matchesLocation(row) {
     return state.location === 'all' || row.location === state.location;
+  }
+
+  function matchesCategory(row) {
+    return state.category === 'all' || row.category === state.category;
   }
 
   function matchesReason(row) {
@@ -301,7 +306,7 @@
   function renderCheckedList() {
     if (!products.length) return renderNoDataState('checkedList', 'checkedListFooter');
     const combined = [...urgentRows, ...fineRows];
-    const filtered = combined.filter((r) => matchesSearch(r) && matchesReason(r) && matchesLocation(r));
+    const filtered = combined.filter((r) => matchesSearch(r) && matchesReason(r) && matchesLocation(r) && matchesCategory(r));
     const sorted = sortRows(filtered);
     const shown = sorted.slice(0, state.listPage * PAGE_SIZE);
     document.getElementById('checkedList').innerHTML = shown.map((p) => `
@@ -329,6 +334,7 @@
       const statusInfo = getStatus(p);
       const row = {
         name: p.name,
+        category: p.category,
         brand: p.brand,
         location: p.location,
         threshold: p.threshold,
@@ -401,7 +407,10 @@
   document.getElementById('categoryChips').addEventListener('click', (e) => {
     const btn = e.target.closest('.filter-chip');
     if (!btn) return;
+    state.category = btn.dataset.category;
+    state.listPage = 1;
     document.querySelectorAll('#categoryChips .filter-chip').forEach((b) => b.classList.toggle('active', b === btn));
+    renderCheckedList();
   });
 
   document.getElementById('locationFilter').addEventListener('change', (e) => {
