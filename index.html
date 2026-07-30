@@ -258,6 +258,7 @@
 
         products = rows.map((row) => ({
           name: row['Product Name'],
+          category: row['Product Name'],
           brand: row['Brand'],
           location: row['Location'],
           quantity: toNumber(row['Quantity in Stock (liters/kg)']),
@@ -270,6 +271,8 @@
         document.getElementById('locationFilter').innerHTML =
           `<option value="all">All Locations</option>` +
           locations.map((loc) => `<option value="${esc(loc)}">${esc(loc)}</option>`).join('');
+
+        const categories = [...new Set(products.map((p) => p.category).filter(Boolean))].sort();
 
         console.log('Reference date:', TODAY ? fmt(TODAY) : 'Unknown');
         console.log('First 5 mapped products:', products.slice(0, 5));
