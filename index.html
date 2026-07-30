@@ -27,6 +27,7 @@
     --butter: #E3B23C;
     --clay: #A8402F;
     --clay-light: #F6E8E4;
+    --rust: #B5533C;
     --stone: #6B6357;
     --hairline: #E2DACB;
   }
@@ -39,11 +40,20 @@
   .title { font-family: 'Instrument Serif', serif; font-style: italic; font-size: 34px; font-weight: 400; letter-spacing: -0.01em; margin: 0; }
   .subtitle { font-family: 'IBM Plex Mono', monospace; margin: 8px 0 0; font-size: 14px; color: var(--stone); }
   .intro-banner { font-family: 'DM Sans', system-ui, sans-serif; font-size: 14px; color: var(--ink); background: var(--sage-light); border: 1px solid var(--hairline); border-radius: 6px; padding: 12px 16px; margin: 20px 0 0; }
-  .stats { display: flex; gap: 0; margin: 28px 0 32px; flex-wrap: wrap; border-top: 1px solid var(--hairline); border-bottom: 1px solid var(--hairline); }
+  .stats { margin: 28px 0 32px; border-top: 1px solid var(--hairline); border-bottom: 1px solid var(--hairline); }
+  .stats-top { display: flex; gap: 0; flex-wrap: wrap; }
   .stat-card { flex: 1; min-width: 180px; padding: 18px 24px; }
   .stat-card + .stat-card { border-left: 1px solid var(--hairline); }
   .stat-label { font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
-  .stat-value { font-family: 'Instrument Serif', serif; font-style: italic; font-size: 36px; font-weight: 400; margin-top: 4px; }
+  .stat-value { font-family: 'Instrument Serif', serif; font-style: italic; font-weight: 400; margin-top: 4px; }
+  .stat-value.urgent { color: var(--rust); font-size: 44px; }
+  .stat-value.fine { color: var(--sage); font-size: 28px; }
+  .stat-percent { font-family: 'DM Sans', system-ui, sans-serif; font-size: 13px; color: var(--stone); margin-top: 2px; }
+  .proportion-bar { display: flex; height: 9px; border-radius: 999px; overflow: hidden; background: var(--hairline); margin: 4px 24px 16px; }
+  .proportion-bar-segment { height: 100%; }
+  .breakdown-row { display: flex; flex-wrap: wrap; gap: 8px 20px; padding: 14px 24px 18px; border-top: 1px solid var(--hairline); font-family: 'DM Sans', system-ui, sans-serif; font-size: 13px; color: var(--stone); }
+  .breakdown-item { display: flex; align-items: center; gap: 6px; }
+  .breakdown-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
   .toolbar { display: flex; gap: 12px; flex-wrap: wrap; margin: 0 0 12px; }
   .search-input { flex: 1; min-width: 200px; font-family: inherit; font-size: 14px; padding: 10px 14px; border: 1px solid var(--hairline); border-radius: 6px; background: #fff; color: var(--ink); }
   .search-input:focus { outline: 2px solid var(--ink); outline-offset: -1px; }
@@ -87,14 +97,23 @@
     <p class="intro-banner">This tool flags dairy stock that needs attention today based on stock levels and expiration dates, everything else can wait.</p>
 
     <div class="stats" id="stats" style="display:none;">
-      <div class="stat-card">
-        <div class="stat-label" style="color:var(--clay);">Needs attention</div>
-        <div class="stat-value" id="urgentCount"></div>
+      <div class="stats-top">
+        <div class="stat-card">
+          <div class="stat-label" style="color:var(--rust);">Needs attention</div>
+          <div class="stat-value urgent" id="urgentCount"></div>
+          <div class="stat-percent" id="urgentPercent"></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label" style="color:var(--sage);">Fine for now</div>
+          <div class="stat-value fine" id="fineCount"></div>
+          <div class="stat-percent" id="finePercent"></div>
+        </div>
       </div>
-      <div class="stat-card">
-        <div class="stat-label" style="color:var(--sage);">Fine for now</div>
-        <div class="stat-value" id="fineCount"></div>
+      <div class="proportion-bar" id="proportionBar">
+        <div class="proportion-bar-segment" id="proportionBarUrgent" style="background:var(--rust);"></div>
+        <div class="proportion-bar-segment" id="proportionBarFine" style="background:var(--sage);"></div>
       </div>
+      <div class="breakdown-row" id="breakdownRow"></div>
     </div>
 
     <div class="toolbar">
@@ -183,9 +202,33 @@
     return state.category === 'all' || row.category === state.category;
   }
 
-  function updateStatsCounts() {
-    document.getElementById('urgentCount').textContent = items.filter((i) => i.status === 'urgent' && matchesCategory(i)).length;
-    document.getElementById('fineCount').textContent = items.filter((i) => i.status === 'fine' && matchesCategory(i)).length;
+  function updateStats() {
+    const scoped = items.filter(matchesCategory);
+    const urgentItems = scoped.filter((i) => i.status === 'urgent');
+    const fineItems = scoped.filter((i) => i.status === 'fine');
+    const total = scoped.length;
+
+    const urgentPct = total ? Math.round((urgentItems.length / total) * 100) : 0;
+    const finePct = total ? 100 - urgentPct : 0;
+
+    document.getElementById('urgentCount').textContent = urgentItems.length;
+    document.getElementById('fineCount').textContent = fineItems.length;
+    document.getElementById('urgentPercent').textContent = `${urgentPct}% of checked stock`;
+    document.getElementById('finePercent').textContent = `${finePct}% of checked stock`;
+
+    document.getElementById('proportionBarUrgent').style.width = `${urgentPct}%`;
+    document.getElementById('proportionBarFine').style.width = `${finePct}%`;
+
+    const expiredCount = urgentItems.filter((i) => i.flags.includes('Expired')).length;
+    const expiringCount = urgentItems.filter((i) => i.flags.some((f) => f.startsWith('Expires in'))).length;
+    const lowStockCount = urgentItems.filter((i) => i.flags.includes('Low stock')).length;
+
+    document.getElementById('breakdownRow').innerHTML = `
+      <span class="breakdown-item"><span class="breakdown-dot" style="background:var(--clay);"></span>Expired: ${expiredCount}</span>
+      <span class="breakdown-item"><span class="breakdown-dot" style="background:var(--butter);"></span>Expiring soon: ${expiringCount}</span>
+      <span class="breakdown-item"><span class="breakdown-dot" style="background:var(--clay);"></span>Low stock: ${lowStockCount}</span>
+      <span class="breakdown-item"><span class="breakdown-dot" style="background:var(--sage);"></span>Fine for now: ${fineItems.length}</span>
+    `;
   }
 
   function matchesReason(row) {
@@ -355,7 +398,7 @@
 
     document.getElementById('subtitle').textContent =
       `Dairy stock — records through ${TODAY ? fmt(TODAY) : 'Unknown'}. Flagged if at/below reorder point, or expiring within 14 days of its own record date.`;
-    updateStatsCounts();
+    updateStats();
 
     state.listPage = 1;
     renderCheckedList();
@@ -396,7 +439,7 @@
     state.category = btn.dataset.category;
     state.listPage = 1;
     document.querySelectorAll('#categoryChips .filter-chip').forEach((b) => b.classList.toggle('active', b === btn));
-    updateStatsCounts();
+    updateStats();
     renderCheckedList();
   });
 
