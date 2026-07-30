@@ -116,6 +116,8 @@
       </select>
     </div>
 
+    <div class="filter-chips" id="categoryChips"></div>
+
     <p class="empty-state" id="loadingState">Loading inventory data…</p>
     <p class="empty-state" id="errorState" style="display:none; color: var(--clay);"></p>
 
@@ -273,6 +275,9 @@
           locations.map((loc) => `<option value="${esc(loc)}">${esc(loc)}</option>`).join('');
 
         const categories = [...new Set(products.map((p) => p.category).filter(Boolean))].sort();
+        document.getElementById('categoryChips').innerHTML =
+          `<button class="filter-chip active" data-category="all" type="button">All categories</button>` +
+          categories.map((cat) => `<button class="filter-chip" data-category="${esc(cat)}" type="button">${esc(cat)}</button>`).join('');
 
         console.log('Reference date:', TODAY ? fmt(TODAY) : 'Unknown');
         console.log('First 5 mapped products:', products.slice(0, 5));
@@ -369,6 +374,7 @@
     document.getElementById('stats').style.display = '';
     document.getElementById('checkedListWrapper').style.display = '';
     document.getElementById('filterChips').style.display = 'flex';
+    document.getElementById('categoryChips').style.display = 'flex';
   }
 
   document.getElementById('searchInput').addEventListener('input', (e) => {
@@ -383,13 +389,19 @@
     renderCheckedList();
   });
 
-  document.querySelectorAll('.filter-chip').forEach((btn) => {
+  document.querySelectorAll('#filterChips .filter-chip').forEach((btn) => {
     btn.addEventListener('click', () => {
       state.reason = btn.dataset.reason;
       state.listPage = 1;
-      document.querySelectorAll('.filter-chip').forEach((b) => b.classList.toggle('active', b === btn));
+      document.querySelectorAll('#filterChips .filter-chip').forEach((b) => b.classList.toggle('active', b === btn));
       renderCheckedList();
     });
+  });
+
+  document.getElementById('categoryChips').addEventListener('click', (e) => {
+    const btn = e.target.closest('.filter-chip');
+    if (!btn) return;
+    document.querySelectorAll('#categoryChips .filter-chip').forEach((b) => b.classList.toggle('active', b === btn));
   });
 
   document.getElementById('locationFilter').addEventListener('change', (e) => {
