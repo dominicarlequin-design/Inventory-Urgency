@@ -2,7 +2,7 @@
 
 A dashboard that flags which products need attention today — so you don't have to scan every row by hand.
 
-**Live app:** [stock-watch.vercel.app](https://stock-watch.vercel.app)
+**Live app:** [inventory-urgency.vercel.app](https://inventory-urgency.vercel.app)
 
 ## What it does
 
