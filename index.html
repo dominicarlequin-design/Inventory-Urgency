@@ -185,6 +185,11 @@
     return state.category === 'all' || row.category === state.category;
   }
 
+  function updateStatsCounts() {
+    document.getElementById('urgentCount').textContent = urgentRows.filter(matchesCategory).length;
+    document.getElementById('fineCount').textContent = fineRows.filter(matchesCategory).length;
+  }
+
   function matchesReason(row) {
     if (state.reason === 'all') return true;
     if (!row.flags) return false;
@@ -367,8 +372,7 @@
 
     document.getElementById('subtitle').textContent =
       `Dairy stock — records through ${TODAY ? fmt(TODAY) : 'Unknown'}. Flagged if at/below reorder point, or expiring within 14 days of its own record date.`;
-    document.getElementById('urgentCount').textContent = urgentCount;
-    document.getElementById('fineCount').textContent = fineCount;
+    updateStatsCounts();
 
     state.listPage = 1;
     renderCheckedList();
@@ -410,6 +414,7 @@
     state.category = btn.dataset.category;
     state.listPage = 1;
     document.querySelectorAll('#categoryChips .filter-chip').forEach((b) => b.classList.toggle('active', b === btn));
+    updateStatsCounts();
     renderCheckedList();
   });
 
