@@ -55,12 +55,7 @@
   .sticky-nav { display: none; position: sticky; top: 0; z-index: 10; gap: 20px; background: rgba(250, 247, 242, 0.92); backdrop-filter: blur(6px); border-bottom: 1px solid var(--hairline); padding: 12px 0; margin: 0 0 16px; }
   .nav-link { font-size: 14px; font-weight: 600; text-decoration: none; color: var(--stone); display: flex; align-items: center; gap: 6px; }
   .nav-link:hover { color: var(--ink); }
-  .columns { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
-  .col-header { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
   .dot { width: 10px; height: 10px; border-radius: 50%; }
-  .col-title { font-family: 'Instrument Serif', serif; font-style: italic; font-size: 20px; font-weight: 400; margin: 0; }
-  .col-toggle { font-family: inherit; font-size: 13px; font-weight: 600; color: var(--ink); background: none; border: none; cursor: pointer; margin-left: auto; padding: 4px 8px; }
-  .col-toggle:hover { text-decoration: underline; }
   .card-list { display: flex; flex-direction: column; gap: 12px; }
   .card { background: #fff; border-radius: 6px; padding: 16px 18px; transition: box-shadow 0.15s ease, transform 0.15s ease; }
   .card:hover { box-shadow: 0 4px 12px rgba(38, 57, 46, 0.1); transform: translateY(-1px); }
@@ -80,12 +75,11 @@
   .empty-state { font-size: 14px; color: var(--stone); text-align: center; padding: 24px 0; margin: 0; }
   .back-to-top { display: none; position: fixed; bottom: 24px; right: 24px; font-family: inherit; font-size: 13px; font-weight: 600; color: #fff; background: var(--ink); border: none; border-radius: 999px; padding: 10px 16px; cursor: pointer; box-shadow: 0 4px 12px rgba(38, 57, 46, 0.2); transition: background 0.15s ease; z-index: 20; }
   .back-to-top:hover { background: var(--ink-hover); }
-  #urgentSection, #fineSection { scroll-margin-top: 70px; }
+  #productSection { scroll-margin-top: 70px; }
   #checkBtn { font-family: 'Instrument Serif', serif; font-style: italic; font-size: 18px; font-weight: 400; color: #fff; background: var(--ink); border: none; border-radius: 6px; padding: 12px 22px; cursor: pointer; transition: background 0.15s ease; }
   #checkBtn:hover { background: var(--ink-hover); }
   #checkBtn:active { background: var(--ink-active); }
   @media (max-width: 700px) {
-    .columns { grid-template-columns: 1fr; }
     .page { padding: 32px 20px; }
   }
 </style>
@@ -138,28 +132,14 @@
     </div>
 
     <div class="sticky-nav" id="stickyNav">
-      <a href="#urgentSection" class="nav-link"><span class="dot" style="background:var(--clay);"></span>Needs Attention <span id="navUrgentCount"></span></a>
-      <a href="#fineSection" class="nav-link"><span class="dot" style="background:var(--sage);"></span>Fine For Now <span id="navFineCount"></span></a>
+      <a href="#productSection" class="nav-link"><span class="dot" style="background:var(--clay);"></span>Needs Attention <span id="navUrgentCount"></span></a>
+      <a href="#productSection" class="nav-link"><span class="dot" style="background:var(--sage);"></span>Fine For Now <span id="navFineCount"></span></a>
     </div>
 
-    <div class="columns" id="columns" style="display:none;">
-      <section id="urgentSection">
-        <div class="col-header">
-          <span class="dot" style="background:var(--clay);"></span>
-          <h2 class="col-title">Needs Attention Today</h2>
-        </div>
-        <div class="card-list" id="urgentList"></div>
-        <div class="list-footer" id="urgentListFooter"></div>
-      </section>
-
-      <section id="fineSection">
-        <div class="col-header">
-          <span class="dot" style="background:var(--sage);"></span>
-          <h2 class="col-title">Fine For Now</h2>
-          <button class="col-toggle" id="fineToggle" type="button"></button>
-        </div>
-        <div class="card-list" id="fineList" style="display:none;"></div>
-        <div class="list-footer" id="fineListFooter" style="display:none;"></div>
+    <div id="columns" style="display:none;">
+      <section id="productSection">
+        <div class="card-list" id="checkedList"></div>
+        <div class="list-footer" id="checkedListFooter"></div>
       </section>
     </div>
   </div>
@@ -185,9 +165,7 @@
     reason: 'all',
     location: 'all',
     allPage: 1,
-    urgentPage: 1,
-    finePage: 1,
-    fineCollapsed: true,
+    listPage: 1,
   };
 
   const fmt = (d) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
@@ -335,54 +313,31 @@
     });
   }
 
-  function renderUrgentList() {
-    const filtered = urgentRows.filter((r) => matchesSearch(r) && matchesReason(r) && matchesLocation(r));
+  function renderCheckedList() {
+    const combined = [...urgentRows, ...fineRows];
+    const filtered = combined.filter((r) => matchesSearch(r) && matchesReason(r) && matchesLocation(r));
     const sorted = sortRows(filtered);
-    const shown = sorted.slice(0, state.urgentPage * PAGE_SIZE);
-    document.getElementById('urgentList').innerHTML = shown.map((p) => `
-      <div class="card urgent-card">
+    const shown = sorted.slice(0, state.listPage * PAGE_SIZE);
+    document.getElementById('checkedList').innerHTML = shown.map((p) => `
+      <div class="card ${p.status === 'urgent' ? 'urgent-card' : 'fine-card'}">
         <div class="card-row">
           <span class="card-name">${esc(p.name)} — ${esc(p.brand)}, ${esc(p.location)}</span>
           <span class="card-qty">${esc(p.qtyLabel)}</span>
         </div>
         <div class="chips">
-          ${p.flags.map((f) => `<span class="chip">${esc(f)}</span>`).join('')}
+          ${p.status === 'urgent'
+            ? p.flags.map((f) => `<span class="chip">${esc(f)}</span>`).join('')
+            : `<span class="chip chip-ok">All good</span>`}
         </div>
         <div class="card-meta">Expires ${esc(p.expLabel)} · recorded ${esc(p.recordLabel)} · reorder at ${esc(p.threshold)}</div>
       </div>
     `).join('');
-    renderListFooter('urgentListFooter', shown.length, sorted.length, () => { state.urgentPage++; renderUrgentList(); });
-  }
-
-  function renderFineList() {
-    const filtered = fineRows.filter((r) => matchesSearch(r) && matchesLocation(r));
-    const sorted = sortRows(filtered);
-    const shown = sorted.slice(0, state.finePage * PAGE_SIZE);
-    document.getElementById('fineList').innerHTML = shown.map((p) => `
-      <div class="card fine-card">
-        <div class="card-row">
-          <span class="card-name">${esc(p.name)} — ${esc(p.brand)}, ${esc(p.location)}</span>
-          <span class="card-qty">${esc(p.qtyLabel)}</span>
-        </div>
-        <div class="chips">
-          <span class="chip chip-ok">All good</span>
-        </div>
-        <div class="card-meta">Expires ${esc(p.expLabel)} · recorded ${esc(p.recordLabel)} · reorder at ${esc(p.threshold)}</div>
-      </div>
-    `).join('');
-    renderListFooter('fineListFooter', shown.length, sorted.length, () => { state.finePage++; renderFineList(); });
-  }
-
-  function updateFineToggle() {
-    const btn = document.getElementById('fineToggle');
-    btn.textContent = state.fineCollapsed ? `Show (${fineRows.length})` : 'Hide';
-    document.getElementById('fineList').style.display = state.fineCollapsed ? 'none' : '';
-    document.getElementById('fineListFooter').style.display = state.fineCollapsed ? 'none' : '';
+    renderListFooter('checkedListFooter', shown.length, sorted.length, () => { state.listPage++; renderCheckedList(); });
   }
 
   function renderCurrentView() {
     if (!checked) renderAllList();
-    else { renderUrgentList(); renderFineList(); }
+    else renderCheckedList();
   }
 
   function checkUrgency() {
@@ -431,11 +386,8 @@
     document.getElementById('navUrgentCount').textContent = `(${urgentCount})`;
     document.getElementById('navFineCount').textContent = `(${fineCount})`;
 
-    state.urgentPage = 1;
-    state.finePage = 1;
-    renderUrgentList();
-    renderFineList();
-    updateFineToggle();
+    state.listPage = 1;
+    renderCheckedList();
 
     document.getElementById('product-count').textContent = products.length;
     document.getElementById('check-date').textContent = new Date().toLocaleDateString('en-US', {month:'short', day:'numeric', year:'numeric'});
@@ -457,39 +409,31 @@
   document.getElementById('searchInput').addEventListener('input', (e) => {
     state.search = e.target.value.trim().toLowerCase();
     state.allPage = 1;
-    state.urgentPage = 1;
-    state.finePage = 1;
+    state.listPage = 1;
     renderCurrentView();
   });
 
   document.getElementById('sortSelect').addEventListener('change', (e) => {
     state.sort = e.target.value;
     state.allPage = 1;
-    state.urgentPage = 1;
-    state.finePage = 1;
+    state.listPage = 1;
     renderCurrentView();
   });
 
   document.querySelectorAll('.filter-chip').forEach((btn) => {
     btn.addEventListener('click', () => {
       state.reason = btn.dataset.reason;
-      state.urgentPage = 1;
+      state.listPage = 1;
       document.querySelectorAll('.filter-chip').forEach((b) => b.classList.toggle('active', b === btn));
-      renderUrgentList();
+      renderCheckedList();
     });
   });
 
   document.getElementById('locationFilter').addEventListener('change', (e) => {
     state.location = e.target.value;
     state.allPage = 1;
-    state.urgentPage = 1;
-    state.finePage = 1;
+    state.listPage = 1;
     renderCurrentView();
-  });
-
-  document.getElementById('fineToggle').addEventListener('click', () => {
-    state.fineCollapsed = !state.fineCollapsed;
-    updateFineToggle();
   });
 
   const backToTop = document.getElementById('backToTop');
