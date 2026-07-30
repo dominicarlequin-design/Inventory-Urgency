@@ -139,9 +139,7 @@
   const DAY = 86400000;
   const PAGE_SIZE = 50;
 
-  let products = [];
-  let urgentRows = [];
-  let fineRows = [];
+  let items = [];
   let referenceDate = null;
   let TODAY = null;
 
@@ -186,8 +184,8 @@
   }
 
   function updateStatsCounts() {
-    document.getElementById('urgentCount').textContent = urgentRows.filter(matchesCategory).length;
-    document.getElementById('fineCount').textContent = fineRows.filter(matchesCategory).length;
+    document.getElementById('urgentCount').textContent = items.filter((i) => i.status === 'urgent' && matchesCategory(i)).length;
+    document.getElementById('fineCount').textContent = items.filter((i) => i.status === 'fine' && matchesCategory(i)).length;
   }
 
   function matchesReason(row) {
@@ -247,6 +245,43 @@
     return { status: 'fine', flags: [] };
   }
 
+  function parseAndAggregateInventory(csvData) {
+    const rows = csvData.filter((row) => row && row['Product Name']);
+
+    const referenceDate = rows.reduce((latest, row) => {
+      const parsed = toDate(row['Date']);
+      if (Number.isNaN(parsed.getTime())) return latest;
+      return latest && latest > parsed ? latest : parsed;
+    }, null);
+
+    const items = rows.map((row) => {
+      const product = {
+        name: row['Product Name'],
+        category: row['Product Name'],
+        brand: row['Brand'],
+        location: row['Location'],
+        quantity: toNumber(row['Quantity in Stock (liters/kg)']),
+        threshold: toNumber(row['Minimum Stock Threshold (liters/kg)']),
+        expirationDate: toDate(row['Expiration Date']),
+        recordDate: toDate(row['Date']),
+      };
+      const statusInfo = getStatus(product);
+      return {
+        ...product,
+        qtyLabel: `${product.quantity} on hand`,
+        expLabel: product.expirationDate instanceof Date && !Number.isNaN(product.expirationDate.getTime()) ? fmt(product.expirationDate) : 'Unknown',
+        recordLabel: product.recordDate instanceof Date && !Number.isNaN(product.recordDate.getTime()) ? fmt(product.recordDate) : 'Unknown',
+        flags: statusInfo.flags,
+        status: statusInfo.status,
+      };
+    });
+
+    const needsAttentionCount = items.filter((item) => item.status === 'urgent').length;
+    const fineForNowCount = items.filter((item) => item.status === 'fine').length;
+
+    return { items, needsAttentionCount, fineForNowCount, totalCount: items.length, referenceDate };
+  }
+
   function loadProducts() {
     document.getElementById('loadingState').style.display = '';
     document.getElementById('errorState').style.display = 'none';
@@ -258,45 +293,25 @@
       complete: (results) => {
         document.getElementById('loadingState').style.display = 'none';
 
-        const rows = results.data.filter((row) => row && row['Product Name']);
-
-        referenceDate = rows.reduce((latest, row) => {
-          const value = row['Date'];
-          const parsed = toDate(value);
-          if (Number.isNaN(parsed.getTime())) return latest;
-          return latest && latest > parsed ? latest : parsed;
-        }, null);
+        const aggregate = parseAndAggregateInventory(results.data);
+        items = aggregate.items;
+        referenceDate = aggregate.referenceDate;
         TODAY = referenceDate;
 
-        products = rows.map((row) => ({
-          name: row['Product Name'],
-          category: row['Product Name'],
-          brand: row['Brand'],
-          location: row['Location'],
-          quantity: toNumber(row['Quantity in Stock (liters/kg)']),
-          threshold: toNumber(row['Minimum Stock Threshold (liters/kg)']),
-          expirationDate: toDate(row['Expiration Date']),
-          recordDate: toDate(row['Date']),
-        }));
-
-        const locations = [...new Set(products.map((p) => p.location).filter(Boolean))].sort();
+        const locations = [...new Set(items.map((p) => p.location).filter(Boolean))].sort();
         document.getElementById('locationFilter').innerHTML =
           `<option value="all">All Locations</option>` +
           locations.map((loc) => `<option value="${esc(loc)}">${esc(loc)}</option>`).join('');
 
-        const categories = [...new Set(products.map((p) => p.category).filter(Boolean))].sort();
+        const categories = [...new Set(items.map((p) => p.category).filter(Boolean))].sort();
         document.getElementById('categoryChips').innerHTML =
           `<button class="filter-chip active" data-category="all" type="button">All categories</button>` +
           categories.map((cat) => `<button class="filter-chip" data-category="${esc(cat)}" type="button">${esc(cat)}</button>`).join('');
 
         console.log('Reference date:', TODAY ? fmt(TODAY) : 'Unknown');
-        console.log('First 5 mapped products:', products.slice(0, 5));
-        console.log('Sample dates:', products.slice(0, 5).map((p) => ({
-          name: p.name,
-          csvDate: p.expirationDate.toISOString().slice(0, 10),
-          displayDate: fmt(p.expirationDate),
-        })));
-        checkUrgency();
+        console.log('First 5 items:', items.slice(0, 5));
+
+        checkUrgency(aggregate);
       },
       error: (error) => {
         console.error('Failed to load dairy data', error);
@@ -309,9 +324,8 @@
   }
 
   function renderCheckedList() {
-    if (!products.length) return renderNoDataState('checkedList', 'checkedListFooter');
-    const combined = [...urgentRows, ...fineRows];
-    const filtered = combined.filter((r) => matchesSearch(r) && matchesReason(r) && matchesLocation(r) && matchesCategory(r));
+    if (!items.length) return renderNoDataState('checkedList', 'checkedListFooter');
+    const filtered = items.filter((r) => matchesSearch(r) && matchesReason(r) && matchesLocation(r) && matchesCategory(r));
     const sorted = sortRows(filtered);
     const shown = sorted.slice(0, state.listPage * PAGE_SIZE);
     document.getElementById('checkedList').innerHTML = shown.map((p) => `
@@ -331,44 +345,13 @@
     renderListFooter('checkedListFooter', shown.length, sorted.length, () => { state.listPage++; renderCheckedList(); });
   }
 
-  function checkUrgency() {
-    urgentRows = [];
-    fineRows = [];
-
-    products.forEach((p) => {
-      const statusInfo = getStatus(p);
-      const row = {
-        name: p.name,
-        category: p.category,
-        brand: p.brand,
-        location: p.location,
-        threshold: p.threshold,
-        qtyLabel: `${p.quantity} on hand`,
-        expLabel: p.expirationDate instanceof Date && !Number.isNaN(p.expirationDate.getTime()) ? fmt(p.expirationDate) : 'Unknown',
-        recordLabel: p.recordDate instanceof Date && !Number.isNaN(p.recordDate.getTime()) ? fmt(p.recordDate) : 'Unknown',
-        expirationDate: p.expirationDate,
-        flags: statusInfo.flags,
-        status: statusInfo.status,
-      };
-
-      if (statusInfo.status === 'urgent') urgentRows.push(row);
-      else fineRows.push(row);
+  function checkUrgency(aggregate) {
+    console.log('Aggregate counts:', {
+      referenceDate: TODAY ? fmt(TODAY) : 'Unknown',
+      totalCount: aggregate.totalCount,
+      needsAttentionCount: aggregate.needsAttentionCount,
+      fineForNowCount: aggregate.fineForNowCount,
     });
-
-    const urgentCount = urgentRows.length;
-    const fineCount = fineRows.length;
-    const totalRows = products.length;
-    console.log('Reference-based counts:', { referenceDate: TODAY ? fmt(TODAY) : 'Unknown', totalRows, urgentCount, fineCount });
-
-    const sampleRows = [...urgentRows.slice(0, 2), ...fineRows.slice(0, 1)].map((item) => ({
-      name: item.name,
-      quantity: item.qtyLabel,
-      threshold: item.threshold,
-      expirationDate: item.expLabel,
-      status: item.status,
-      reason: item.flags.length > 0 ? item.flags.join(', ') : 'No issues',
-    }));
-    console.log('Sample urgency rows:', sampleRows);
 
     document.getElementById('subtitle').textContent =
       `Dairy stock — records through ${TODAY ? fmt(TODAY) : 'Unknown'}. Flagged if at/below reorder point, or expiring within 14 days of its own record date.`;
@@ -377,7 +360,7 @@
     state.listPage = 1;
     renderCheckedList();
 
-    document.getElementById('product-count').textContent = products.length;
+    document.getElementById('product-count').textContent = aggregate.totalCount;
     document.getElementById('summary-line').style.display = 'block';
 
     document.getElementById('stats').style.display = '';
