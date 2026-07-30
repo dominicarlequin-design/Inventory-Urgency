@@ -122,7 +122,7 @@
     <p class="empty-state" id="errorState" style="display:none; color: var(--clay);"></p>
 
     <div id="summary-line" style="display:none; margin-bottom:12px; font-size:0.95rem; color:#64748b;">
-      Checked <span id="product-count"></span> products · <span id="check-date"></span>
+      Checked <span id="product-count"></span> products
     </div>
 
     <div id="checkedListWrapper" style="display:none;">
@@ -378,7 +378,6 @@
     renderCheckedList();
 
     document.getElementById('product-count').textContent = products.length;
-    document.getElementById('check-date').textContent = new Date().toLocaleDateString('en-US', {month:'short', day:'numeric', year:'numeric'});
     document.getElementById('summary-line').style.display = 'block';
 
     document.getElementById('stats').style.display = '';
