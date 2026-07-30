@@ -1,4 +1,4 @@
-# Inventory Urgency
+# Stock Watch
 
 A dashboard that flags which products need attention today — so you don't have to scan every row by hand.
 
