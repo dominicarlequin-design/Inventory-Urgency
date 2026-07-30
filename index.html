@@ -22,7 +22,6 @@
     --cream: #FAF7F2;
     --ink: #26392E;
     --ink-hover: #17241c;
-    --ink-active: #0f1811;
     --sage: #7C9A82;
     --sage-light: #EAF0EA;
     --butter: #E3B23C;
@@ -52,10 +51,6 @@
   .filter-chip { font-family: inherit; font-size: 13px; font-weight: 600; padding: 6px 14px; border-radius: 999px; border: 1px solid var(--hairline); background: #fff; color: var(--stone); cursor: pointer; transition: all 0.15s ease; }
   .filter-chip:hover { border-color: var(--stone); }
   .filter-chip.active { background: var(--ink); color: #fff; border-color: var(--ink); }
-  .sticky-nav { display: none; position: sticky; top: 0; z-index: 10; gap: 20px; background: rgba(250, 247, 242, 0.92); backdrop-filter: blur(6px); border-bottom: 1px solid var(--hairline); padding: 12px 0; margin: 0 0 16px; }
-  .nav-link { font-size: 14px; font-weight: 600; text-decoration: none; color: var(--stone); display: flex; align-items: center; gap: 6px; }
-  .nav-link:hover { color: var(--ink); }
-  .dot { width: 10px; height: 10px; border-radius: 50%; }
   .card-list { display: flex; flex-direction: column; gap: 12px; }
   .card { background: #fff; border-radius: 6px; padding: 16px 18px; transition: box-shadow 0.15s ease, transform 0.15s ease; }
   .card:hover { box-shadow: 0 4px 12px rgba(38, 57, 46, 0.1); transform: translateY(-1px); }
@@ -75,10 +70,6 @@
   .empty-state { font-size: 14px; color: var(--stone); text-align: center; padding: 24px 0; margin: 0; }
   .back-to-top { display: none; position: fixed; bottom: 24px; right: 24px; font-family: inherit; font-size: 13px; font-weight: 600; color: #fff; background: var(--ink); border: none; border-radius: 999px; padding: 10px 16px; cursor: pointer; box-shadow: 0 4px 12px rgba(38, 57, 46, 0.2); transition: background 0.15s ease; z-index: 20; }
   .back-to-top:hover { background: var(--ink-hover); }
-  #productSection { scroll-margin-top: 70px; }
-  #checkBtn { font-family: 'Instrument Serif', serif; font-style: italic; font-size: 18px; font-weight: 400; color: #fff; background: var(--ink); border: none; border-radius: 6px; padding: 12px 22px; cursor: pointer; transition: background 0.15s ease; }
-  #checkBtn:hover { background: var(--ink-hover); }
-  #checkBtn:active { background: var(--ink-active); }
   @media (max-width: 700px) {
     .page { padding: 32px 20px; }
   }
@@ -122,28 +113,16 @@
       </select>
     </div>
 
-    <button id="checkBtn" onclick="runCheck()" style="display:none;">Check Urgency</button>
-
     <p class="empty-state" id="loadingState">Loading inventory data…</p>
     <p class="empty-state" id="errorState" style="display:none; color: var(--clay);"></p>
-
-    <div class="card-list" id="allList" style="margin-top:20px;"></div>
-    <div class="list-footer" id="allListFooter"></div>
 
     <div id="summary-line" style="display:none; margin-bottom:12px; font-size:0.95rem; color:#64748b;">
       Checked <span id="product-count"></span> products · <span id="check-date"></span>
     </div>
 
-    <div class="sticky-nav" id="stickyNav">
-      <a href="#productSection" class="nav-link"><span class="dot" style="background:var(--clay);"></span>Needs Attention <span id="navUrgentCount"></span></a>
-      <a href="#productSection" class="nav-link"><span class="dot" style="background:var(--sage);"></span>Fine For Now <span id="navFineCount"></span></a>
-    </div>
-
-    <div id="columns" style="display:none;">
-      <section id="productSection">
-        <div class="card-list" id="checkedList"></div>
-        <div class="list-footer" id="checkedListFooter"></div>
-      </section>
+    <div id="checkedListWrapper" style="display:none;">
+      <div class="card-list" id="checkedList"></div>
+      <div class="list-footer" id="checkedListFooter"></div>
     </div>
   </div>
 </div>
@@ -160,14 +139,12 @@
   let fineRows = [];
   let referenceDate = null;
   let TODAY = null;
-  let checked = false;
 
   const state = {
     search: '',
     sort: 'default',
     reason: 'all',
     location: 'all',
-    allPage: 1,
     listPage: 1,
   };
 
@@ -240,23 +217,6 @@
     document.getElementById(footerId).innerHTML = '';
   }
 
-  function renderAllList() {
-    if (!products.length) return renderNoDataState('allList', 'allListFooter');
-    const filtered = products.filter((r) => matchesSearch(r) && matchesLocation(r));
-    const sorted = sortRows(filtered);
-    const shown = sorted.slice(0, state.allPage * PAGE_SIZE);
-    document.getElementById('allList').innerHTML = shown.map((p) => `
-      <div class="card pending-card">
-        <div class="card-row">
-          <span class="card-name">${esc(p.name)} — ${esc(p.brand)}, ${esc(p.location)}</span>
-          <span class="card-qty">${p.quantity} on hand</span>
-        </div>
-        <div class="card-meta">Expires ${esc(fmt(p.expirationDate))} · reorder at ${esc(p.threshold)}</div>
-      </div>
-    `).join('');
-    renderListFooter('allListFooter', shown.length, sorted.length, () => { state.allPage++; renderAllList(); });
-  }
-
   function getStatus(p) {
     const expirationDate = p.expirationDate instanceof Date && !Number.isNaN(p.expirationDate.getTime()) ? p.expirationDate : null;
     const recordDate = p.recordDate instanceof Date && !Number.isNaN(p.recordDate.getTime()) ? p.recordDate : null;
@@ -315,8 +275,6 @@
           csvDate: p.expirationDate.toISOString().slice(0, 10),
           displayDate: fmt(p.expirationDate),
         })));
-        document.getElementById('checkBtn').style.display = '';
-        renderAllList();
         checkUrgency();
       },
       error: (error) => {
@@ -352,15 +310,9 @@
     renderListFooter('checkedListFooter', shown.length, sorted.length, () => { state.listPage++; renderCheckedList(); });
   }
 
-  function renderCurrentView() {
-    if (!checked) renderAllList();
-    else renderCheckedList();
-  }
-
   function checkUrgency() {
     urgentRows = [];
     fineRows = [];
-    checked = true;
 
     products.forEach((p) => {
       const statusInfo = getStatus(p);
@@ -400,8 +352,6 @@
       `Dairy stock — records through ${TODAY ? fmt(TODAY) : 'Unknown'}. Flagged if at/below reorder point, or expiring within 14 days of its own record date.`;
     document.getElementById('urgentCount').textContent = urgentCount;
     document.getElementById('fineCount').textContent = fineCount;
-    document.getElementById('navUrgentCount').textContent = `(${urgentCount})`;
-    document.getElementById('navFineCount').textContent = `(${fineCount})`;
 
     state.listPage = 1;
     renderCheckedList();
@@ -411,30 +361,20 @@
     document.getElementById('summary-line').style.display = 'block';
 
     document.getElementById('stats').style.display = '';
-    document.getElementById('columns').style.display = '';
-    document.getElementById('checkBtn').style.display = 'none';
-    document.getElementById('allList').style.display = 'none';
-    document.getElementById('allListFooter').style.display = 'none';
+    document.getElementById('checkedListWrapper').style.display = '';
     document.getElementById('filterChips').style.display = 'flex';
-    document.getElementById('stickyNav').style.display = 'flex';
-  }
-
-  function runCheck() {
-    checkUrgency();
   }
 
   document.getElementById('searchInput').addEventListener('input', (e) => {
     state.search = e.target.value.trim().toLowerCase();
-    state.allPage = 1;
     state.listPage = 1;
-    renderCurrentView();
+    renderCheckedList();
   });
 
   document.getElementById('sortSelect').addEventListener('change', (e) => {
     state.sort = e.target.value;
-    state.allPage = 1;
     state.listPage = 1;
-    renderCurrentView();
+    renderCheckedList();
   });
 
   document.querySelectorAll('.filter-chip').forEach((btn) => {
@@ -448,9 +388,8 @@
 
   document.getElementById('locationFilter').addEventListener('change', (e) => {
     state.location = e.target.value;
-    state.allPage = 1;
     state.listPage = 1;
-    renderCurrentView();
+    renderCheckedList();
   });
 
   const backToTop = document.getElementById('backToTop');
